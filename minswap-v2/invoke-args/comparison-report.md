@@ -84,16 +84,19 @@ order. The checker must reject it with the named check:
 | `wrong-lovelace.json` | 12 ADA locked instead of 14 | order lovelace |
 
 Each fixture in `fixtures/negative-cbor/` patches the generated
-transaction's datum bytes so that one node has a constructor the validator's
-typed decode does not accept. The checker decodes every datum node against
-its exact constructor index and field count:
+transaction's datum bytes so that one node has a constructor or field count
+other than the expected order's. Some patches break the validator's typed
+decode; others are valid datums that ask for a different order. The checker
+decodes every datum node against the expected order's exact constructor index
+and field count:
 
 | Fixture | Patch | Rejected by |
 |---|---|---|
 | `expiry-index.json` | `expiry_setting_opt` constructor 1 → 2 | datum expiry_setting_opt |
 | `lp-asset-index.json` | `lp_asset` constructor 0 → 1 | datum lp_asset |
 | `canceller-method.json` | `OAMSignature` (0) → script authorization (1) | datum canceller |
-| `step-type.json` | `SwapExactIn` (0) → `SwapExactOut` (1), same arity | datum step |
+| `step-type.json` | `SwapExactIn` (0) → constructor 1 (`StopLoss`) with 4 fields instead of its 3 | datum step |
+| `step-swap-exact-out.json` | `SwapExactIn` (0) → `SwapExactOut` (3), same arity | datum step |
 
 ## Refreshing live inputs
 

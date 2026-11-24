@@ -16,6 +16,9 @@ party Trader;
 /// The order validator address carrying the trader's stake credential:
 /// the profile's `order_script_hash` as payment part plus the stake key hash
 /// passed as `trader_stake_key`. The Minswap SDK builds the same address.
+/// The caller builds this address and passes it; the transaction does not
+/// derive or check it, so a wrong address locks the order where no batcher
+/// settles it.
 party OrderScript;
 
 env {
@@ -32,7 +35,7 @@ env {
     order_deposit: Int,
 }
 
-// --- Plutus address (Address in aiken stdlib) ---------------------------
+// Plutus address (Address in aiken stdlib)
 
 // Constr(0, [pkh]) — a verification-key payment or stake credential.
 type KeyCredential {
@@ -55,7 +58,7 @@ type PlutusAddress {
     stake: SomeStake,
 }
 
-// --- Order datum ---------------------------------------------------------
+// Order datum
 
 // OrderAuthorizationMethod; only OAMSignature (index 0) is used.
 type OrderAuthorization {
@@ -114,7 +117,7 @@ type OrderDatum {
     expiry_setting_opt: ExpirySetting,
 }
 
-// --- Transactions --------------------------------------------------------
+// Transactions
 
 /// Place a Minswap V2 order that swaps exactly `swap_amount` lovelace for at
 /// least `minimum_receive` MIN in the ADA/MIN pool. The order locks

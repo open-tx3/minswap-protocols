@@ -1,5 +1,5 @@
 {
-  "description": "step is SwapExactOut (constructor 1), which has the same arity, instead of SwapExactIn (0).",
+  "description": "step uses constructor 1 (StopLoss, which has 3 fields) with SwapExactIn's 4 fields; the validator's typed decode fails.",
   "applies_to": "generated-order.cbor.hex",
   "patch": { "find": "d87984d87a80", "replace": "d87a84d87a80" },
   "rejects": "datum step"

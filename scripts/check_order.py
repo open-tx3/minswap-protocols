@@ -14,7 +14,7 @@ import json
 import os
 import sys
 
-# --- CBOR (RFC 8949) ---------------------------------------------------------
+# CBOR (RFC 8949)
 
 
 class Tag:
@@ -116,7 +116,7 @@ def cbor_loads(data):
     return Decoder(data).item()
 
 
-# --- Plutus data ---------------------------------------------------------------
+# Plutus data
 #
 # Every node is decoded against the exact constructor index and arity that
 # lib/amm_dex_v2/types.ak gives it; any other shape fails, as it would fail
@@ -209,7 +209,7 @@ def decode_order_datum(data):
     }
 
 
-# --- Transaction -----------------------------------------------------------------
+# Transaction
 
 
 def decode_address(raw):
@@ -275,7 +275,7 @@ def decoded_effects(cbor_hex, order_script_hash):
     }
 
 
-# --- Checks -------------------------------------------------------------------------
+# Checks
 
 
 class CheckError(Exception):

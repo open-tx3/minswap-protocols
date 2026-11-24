@@ -25,7 +25,7 @@ the trader cancels it.
 | Party | Role |
 |---|---|
 | `Trader` | Funds the order, signs, receives change, and is the order's canceller, success receiver and refund receiver. Must be a base address with a key payment part and a key stake part. |
-| `OrderScript` | The order validator address with the trader's stake key: the profile's `order_script_hash` as payment part plus `trader_stake_key`. The SDK derives the same address, so staking rewards on the locked ADA stay with the trader. |
+| `OrderScript` | The order validator address with the trader's stake key: the profile's `order_script_hash` as payment part plus `trader_stake_key`. The SDK derives the same address, so staking rewards on the locked ADA stay with the trader. The caller builds this address; the transaction does not derive or check it, so a wrong address locks the order where no batcher settles it. |
 
 ## Parameters and units
 
