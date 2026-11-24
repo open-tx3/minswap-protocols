@@ -118,9 +118,10 @@ def cbor_loads(data):
 
 # Plutus data
 #
-# Every node is decoded against the exact constructor index and arity that
-# lib/amm_dex_v2/types.ak gives it; any other shape fails, as it would fail
-# the validator's typed decode and lock the order.
+# Every node is decoded against the expected order's exact constructor index
+# and arity (lib/amm_dex_v2/types.ak). Some other shapes would also fail the
+# validator's typed decode and lock the order; others are valid datums for a
+# different order. Both are rejected.
 
 
 def constr(data):

@@ -17,8 +17,9 @@ party Trader;
 /// the profile's `order_script_hash` as payment part plus the stake key hash
 /// passed as `trader_stake_key`. The Minswap SDK builds the same address.
 /// The caller builds this address and passes it; the transaction does not
-/// derive or check it, so a wrong address locks the order where no batcher
-/// settles it.
+/// derive or check it. A wrong payment part sends the funds to another
+/// address, possibly beyond recovery; a wrong stake part redirects the
+/// staking rewards.
 party OrderScript;
 
 env {
