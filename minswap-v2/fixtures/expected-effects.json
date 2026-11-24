@@ -1,0 +1,62 @@
+{
+  "operation": "place_exact_in_order",
+  "network": "preprod",
+  "deployment": {
+    "network_id": 0,
+    "order_script_hash": "da9525463841173ad1230b1d5a1b5d0a3116bbdeb4412327148a1b7a",
+    "order_enterprise_address": "addr_test1wrdf2f2x8pq3wwk3yv936ksmt59rz94mm66yzge8zj9pk7s0kjph3",
+    "order_script_reference": "8c98f0530cba144d264fbd2731488af25257d7ce6a0cd1586fc7209363724f03#0",
+    "lp_policy_id": "d6aae2059baee188f74917493cf7637e679cd219bdfbbf4dcbeb1d0b",
+    "max_batcher_fee": 2000000,
+    "order_deposit": 2000000,
+    "min": {
+      "policy_id": "e16c2dc8ae937e8d3790c7fd7168d7b994621ba14ca11415f39fed72",
+      "asset_name": "4d494e"
+    },
+    "pool": {
+      "asset_a": { "policy_id": "", "asset_name": "" },
+      "asset_b": {
+        "policy_id": "e16c2dc8ae937e8d3790c7fd7168d7b994621ba14ca11415f39fed72",
+        "asset_name": "4d494e"
+      },
+      "lp_asset_name": "6c3ea488e6ff940bb6fb1b18fd605b5931d9fefde6440117015ba484cf321200",
+      "observed_utxo": "fe784a513b058b68a116c8543173abdbcfc864a1d2407f5df07e685c5ca4ea8f#3",
+      "observed_on": "2026-11-24"
+    },
+    "sources": {
+      "contracts": "https://github.com/minswap/minswap-dex-v2/tree/c3293ad435792ba502f5a2b1691c6736e5f167e6/deployed/preprod",
+      "datum_types": "https://github.com/minswap/minswap-dex-v2/blob/c3293ad435792ba502f5a2b1691c6736e5f167e6/lib/amm_dex_v2/types.ak",
+      "sdk_constructor": "https://github.com/minswap/sdk/blob/ee95d4317414ae1fe2cdc40549e14a1e185dcf59/src/dex-v2.ts",
+      "sdk_example": "https://github.com/minswap/sdk/blob/ee95d4317414ae1fe2cdc40549e14a1e185dcf59/examples/build-tx-example.ts"
+    }
+  },
+  "inputs": {
+    "trader_pkh": "f5ea30947bef0507095d12ea2a4ee6994174c69cb80efad3419bef41",
+    "trader_stake_key": "62b2e8b50e835dde27f272c90c469c8f5f43d0f7d83c23cf62dc92b8",
+    "swap_amount": 10000000,
+    "minimum_receive": 892879821
+  },
+  "reference": {
+    "tx_hash": "e3c9a3473d6a15d1f3f9c521d5847b4dbc6d33d9d651d33bd3a970816b97c10e",
+    "block_height": 5318452,
+    "absolute_slot": 136908883,
+    "timestamp": "2026-10-21T14:14:43Z",
+    "built_by": "Minswap aggregator; CIP-20 metadata records the SDK DexV2 order options (type 0 SWAP_EXACT_IN, direction 1, killOnFailed false, isLimitOrder false)",
+    "file": "reference-order.cbor.hex"
+  },
+  "generated": {
+    "tx_hash": "a58c0ec72db6631be930a7552cedff368521807a567132e2a53a9fd784641367",
+    "resolved_on": "2026-11-24",
+    "command": "trix invoke --profile preprod --skip-submit --args-json-path invoke-args/place_exact_in_order.json",
+    "toolchain": "trix 0.28.0, tx3c 0.25.0",
+    "file": "generated-order.cbor.hex"
+  },
+  "expected_effects": {
+    "order_lovelace": 14000000,
+    "order_assets": {},
+    "direction": "ADA -> MIN (a_to_b_direction = true; pool asset A = ADA, asset B = MIN)",
+    "minimum_min_received": 892879821,
+    "receiver": "addr_test1qr675vy500hs2pcft5fw52jwu6v5zaxxnjuqa7kngxd77stzkt5t2r5rth0z0unjeyxyd8y0tapapa7c8s3u7ckuj2uq2sg6vg",
+    "settlement": "not part of this transaction; a Minswap batcher spends the order and the pool later"
+  }
+}

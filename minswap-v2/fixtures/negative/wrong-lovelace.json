@@ -1,0 +1,5 @@
+{
+  "description": "Order locks less than the offered ADA plus batcher fee and deposit.",
+  "mutation": { "path": ["value", "lovelace"], "value": 12000000 },
+  "rejects": "order lovelace"
+}

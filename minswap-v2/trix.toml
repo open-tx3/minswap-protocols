@@ -1,0 +1,18 @@
+[protocol]
+scope = "open-tx3"
+name = "minswap-v2"
+version = "0.1.0"
+description = "Minswap V2 DEX: place a swap-exact-in order (ADA to MIN) against the ADA/MIN pool"
+main = "main.tx3"
+readme = "README.md"
+repository = "https://github.com/open-tx3/minswap-protocols"
+
+[ledger]
+family = "cardano"
+
+# Network profile. `.env.preprod` binds main.tx3's `env { ... }` block to
+# the Minswap V2 preprod deployment (minswap/minswap-dex-v2 deployed/preprod).
+# The order address is per trader and is passed as the OrderScript party.
+
+[profile.preprod]
+env_file = ".env.preprod"

@@ -1,0 +1,8 @@
+{
+    "trader": "addr_test1qr675vy500hs2pcft5fw52jwu6v5zaxxnjuqa7kngxd77stzkt5t2r5rth0z0unjeyxyd8y0tapapa7c8s3u7ckuj2uq2sg6vg",
+    "orderscript": "addr_test1zrdf2f2x8pq3wwk3yv936ksmt59rz94mm66yzge8zj9pk7nzkt5t2r5rth0z0unjeyxyd8y0tapapa7c8s3u7ckuj2uqwqj3ap",
+    "trader_pkh": "f5ea30947bef0507095d12ea2a4ee6994174c69cb80efad3419bef41",
+    "trader_stake_key": "62b2e8b50e835dde27f272c90c469c8f5f43d0f7d83c23cf62dc92b8",
+    "swap_amount": 10000000,
+    "minimum_receive": 892879821
+}
