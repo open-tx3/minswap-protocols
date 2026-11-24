@@ -11,6 +11,7 @@ import argparse
 import copy
 import hashlib
 import json
+import os
 import sys
 
 # --- CBOR (RFC 8949) ---------------------------------------------------------
@@ -116,6 +117,10 @@ def cbor_loads(data):
 
 
 # --- Plutus data ---------------------------------------------------------------
+#
+# Every node is decoded against the exact constructor index and arity that
+# lib/amm_dex_v2/types.ak gives it; any other shape fails, as it would fail
+# the validator's typed decode and lock the order.
 
 
 def constr(data):
@@ -131,61 +136,77 @@ def constr(data):
     raise ValueError(f"unexpected tag {data.tag}")
 
 
-def plutus_bool(data):
-    idx, fields = constr(data)
-    if fields or idx not in (0, 1):
-        raise ValueError("expected a Bool")
-    return idx == 1
+def shape(node, data, allowed):
+    """Decode `data` as one of `allowed` {index: arity}; return (index, fields)."""
+    try:
+        idx, fields = constr(data)
+    except (ValueError, TypeError, IndexError) as err:
+        raise CheckError(f"datum {node}", str(err))
+    if allowed.get(idx) != len(fields):
+        raise CheckError(f"datum {node}", f"constructor {idx} with {len(fields)} fields, "
+                         f"want one of {sorted(allowed.items())}")
+    return idx, fields
 
 
-def plutus_credential(data):
-    idx, fields = constr(data)
-    return {"kind": ["key", "script"][idx], "hash": fields[0].hex()}
+def leaf(node, value, kind, size=None):
+    ok = isinstance(value, kind) and not isinstance(value, bool)
+    if not ok or (size is not None and len(value) != size):
+        raise CheckError(f"datum {node}", f"got {value!r}, want {kind.__name__}"
+                         + (f" of {size} bytes" if size else ""))
+    return value
 
 
-def plutus_address(data):
-    idx, (payment, stake) = constr(data)
-    assert idx == 0
-    s_idx, s_fields = constr(stake)
+def plutus_bool(node, data):
+    return shape(node, data, {0: 0, 1: 0})[0] == 1
+
+
+def plutus_credential(node, data):
+    idx, (h,) = shape(node, data, {0: 1, 1: 1})
+    return {"kind": ["key", "script"][idx], "hash": leaf(node, h, bytes, 28).hex()}
+
+
+def plutus_address(node, data):
+    _, (payment, stake) = shape(node, data, {0: 2})
+    s_idx, s_fields = shape(f"{node}.stake", stake, {0: 1, 1: 0})
     stake_out = None
     if s_idx == 0:
-        inline_idx, inline_fields = constr(s_fields[0])
-        if inline_idx != 0:
-            raise ValueError("stake pointers are not supported")
-        stake_out = plutus_credential(inline_fields[0])
-    return {"payment": plutus_credential(payment), "stake": stake_out}
+        _, (cred,) = shape(f"{node}.stake.inline", s_fields[0], {0: 1})
+        stake_out = plutus_credential(f"{node}.stake.credential", cred)
+    return {"payment": plutus_credential(f"{node}.payment", payment), "stake": stake_out}
 
 
 def decode_order_datum(data):
-    idx, f = constr(data)
-    if idx != 0 or len(f) != 9:
-        raise ValueError("not a Minswap V2 OrderDatum")
-    can_idx, can = constr(f[0])
-    step_idx, step = constr(f[6])
-    out = {
-        "canceller": {"method": can_idx, "hash": can[0].hex()},
-        "refund_receiver": plutus_address(f[1]),
-        "refund_receiver_datum": constr(f[2])[0],
-        "success_receiver": plutus_address(f[3]),
-        "success_receiver_datum": constr(f[4])[0],
-        "lp_asset": {"policy_id": constr(f[5])[1][0].hex(), "asset_name": constr(f[5])[1][1].hex()},
-        "step": {"type": step_idx},
-        "max_batcher_fee": f[7],
-        "expiry": None,
-    }
-    if step_idx == 0:
-        amt_idx, amt = constr(step[1])
-        out["step"].update({
-            "a_to_b_direction": plutus_bool(step[0]),
-            "swap_amount_option": amt_idx,
-            "swap_amount": amt[0],
-            "minimum_receive": step[2],
-            "killable": plutus_bool(step[3]),
-        })
-    exp_idx, exp = constr(f[8])
+    _, f = shape("OrderDatum", data, {0: 9})
+    _, (can,) = shape("canceller", f[0], {0: 1})
+    _, (policy, name) = shape("lp_asset", f[5], {0: 2})
+    _, (direction, amount, minimum, killable) = shape("step", f[6], {0: 4})
+    _, (swap_amount,) = shape("swap_amount_option", amount, {0: 1})
+    exp_idx, exp = shape("expiry_setting_opt", f[8], {0: 1, 1: 0})
+    expiry = None
     if exp_idx == 0:
-        out["expiry"] = list(exp[0])
-    return out
+        pair = exp[0]
+        if not (isinstance(pair, list) and len(pair) == 2):
+            raise CheckError("datum expiry_setting_opt", f"got {pair!r}, want (expired_time, max_cancel_tip)")
+        expiry = [leaf("expiry_setting_opt", x, int) for x in pair]
+    return {
+        "canceller": {"method": 0, "hash": leaf("canceller", can, bytes, 28).hex()},
+        "refund_receiver": plutus_address("refund_receiver", f[1]),
+        "refund_receiver_datum": shape("refund_receiver_datum", f[2], {0: 0})[0],
+        "success_receiver": plutus_address("success_receiver", f[3]),
+        "success_receiver_datum": shape("success_receiver_datum", f[4], {0: 0})[0],
+        "lp_asset": {"policy_id": leaf("lp_asset", policy, bytes, 28).hex(),
+                     "asset_name": leaf("lp_asset", name, bytes, 32).hex()},
+        "step": {
+            "type": 0,
+            "a_to_b_direction": plutus_bool("step.a_to_b_direction", direction),
+            "swap_amount_option": 0,
+            "swap_amount": leaf("swap_amount_option", swap_amount, int),
+            "minimum_receive": leaf("step.minimum_receive", minimum, int),
+            "killable": plutus_bool("step.killable", killable),
+        },
+        "max_batcher_fee": leaf("max_batcher_fee", f[7], int),
+        "expiry": expiry,
+    }
 
 
 # --- Transaction -----------------------------------------------------------------
@@ -314,29 +335,50 @@ def apply_mutation(effects, mutation):
     return out
 
 
+def apply_patch(cbor_hex, patch):
+    """Replace one byte string in the transaction CBOR; it must occur once."""
+    find, replace = patch["find"].lower(), patch["replace"].lower()
+    count = cbor_hex.count(find)
+    if count != 1 or len(find) != len(replace):
+        raise ValueError(f"patch {find} must occur once and keep its length (found {count})")
+    return cbor_hex.replace(find, replace)
+
+
+def run_negative(path, effects, tx_path, cbor_hex, exp):
+    """A negative fixture mutates a decoded field or patches the CBOR bytes."""
+    neg = json.load(open(path))
+    try:
+        if "patch" in neg:
+            if neg["applies_to"] != os.path.basename(tx_path):
+                print(f"FAIL    {path}: patches {neg['applies_to']}, not {tx_path}")
+                return 1
+            check(decoded_effects(apply_patch(cbor_hex, neg["patch"]), exp["deployment"]["order_script_hash"]), exp)
+        else:
+            check(apply_mutation(effects, neg["mutation"]), exp)
+    except ValueError as err:
+        print(f"FAIL    {path}: {err}")
+        return 1
+    except CheckError as err:
+        if err.check != neg["rejects"]:
+            print(f"FAIL    {path}: rejected by '{err.check}', want '{neg['rejects']}'")
+            return 1
+        print(f"ok      {path}: rejected by '{err.check}'")
+        return 0
+    print(f"FAIL    {path}: mutated order was accepted")
+    return 1
+
+
 def run(args):
     exp = json.load(open(args.expect))
     script_hash = exp["deployment"]["order_script_hash"]
-    effects = decoded_effects(open(args.tx).read(), script_hash)
+    cbor_hex = open(args.tx).read().strip().lower()
+    effects = decoded_effects(cbor_hex, script_hash)
     if args.decode:
         print(json.dumps(effects, indent=2))
         return 0
     check(effects, exp)
     print(f"ok      {args.tx}: order matches {args.expect}")
-    failures = 0
-    for path in args.negative or []:
-        neg = json.load(open(path))
-        try:
-            check(apply_mutation(effects, neg["mutation"]), exp)
-        except CheckError as err:
-            if err.check != neg["rejects"]:
-                print(f"FAIL    {path}: rejected by '{err.check}', want '{neg['rejects']}'")
-                failures += 1
-            else:
-                print(f"ok      {path}: rejected by '{err.check}'")
-            continue
-        print(f"FAIL    {path}: mutated order was accepted")
-        failures += 1
+    failures = sum(run_negative(path, effects, args.tx, cbor_hex, exp) for path in args.negative or [])
     if args.same_as:
         other = decoded_effects(open(args.same_as).read(), script_hash)
         if other != effects:
@@ -350,7 +392,8 @@ def main():
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument("--tx", required=True, help="file holding the transaction CBOR as hex")
     p.add_argument("--expect", required=True, help="expected-effects JSON fixture")
-    p.add_argument("--negative", nargs="*", help="negative fixtures the checker must reject")
+    p.add_argument("--negative", nargs="*", help="negative fixtures (decoded mutations or CBOR patches) "
+                   "the checker must reject")
     p.add_argument("--same-as", help="second transaction whose order must decode identically")
     p.add_argument("--decode", action="store_true", help="print the decoded order and exit")
     args = p.parse_args()

@@ -1,0 +1,6 @@
+{
+  "description": "canceller is a script authorization (constructor 1) instead of the trader's signature (OAMSignature, 0).",
+  "applies_to": "generated-order.cbor.hex",
+  "patch": { "find": "d87989d87981581cf5ea", "replace": "d87989d87a81581cf5ea" },
+  "rejects": "datum canceller"
+}

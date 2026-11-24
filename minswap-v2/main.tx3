@@ -14,11 +14,14 @@
 party Trader;
 
 /// The order validator address carrying the trader's stake credential:
-/// the profile's order script hash as payment part plus the stake key hash
+/// the profile's `order_script_hash` as payment part plus the stake key hash
 /// passed as `trader_stake_key`. The Minswap SDK builds the same address.
 party OrderScript;
 
 env {
+    /// Script hash of the Minswap V2 order validator: the payment part of
+    /// the `OrderScript` address the order is paid to.
+    order_script_hash: Bytes,
     /// Policy id of Minswap V2 LP tokens (the pool authentication policy).
     lp_policy_id: Bytes,
     /// LP asset name of the ADA/MIN V2 pool; identifies the pool.

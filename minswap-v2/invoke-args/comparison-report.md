@@ -1,8 +1,9 @@
 # Minswap V2 `place_exact_in_order`: comparison report
 
 Generated 2026-11-24. It compares the unsigned transaction that
-`trix invoke --profile preprod --skip-submit` built from
-[`place_exact_in_order.json`](place_exact_in_order.json) with an on-chain
+`trix invoke --profile preprod --skip-submit` built from the historical
+arguments recorded under `generated.args` in
+[`expected-effects.json`](../fixtures/expected-effects.json) with an on-chain
 preprod order built through Minswap's own tooling for the same trader, pool
 and amounts. Both transactions are checked in under [`../fixtures/`](../fixtures/).
 [`scripts/check_order.py`](../../scripts/check_order.py) decodes them and
@@ -31,6 +32,7 @@ is an aggregator order on the ADA/MIN pool.
 |---|---|
 | Unsigned tx hash | `a58c0ec72db6631be930a7552cedff368521807a567132e2a53a9fd784641367` |
 | Resolved | 2026-11-24, public preprod TRP, trix 0.28.0 / tx3c 0.25.0 |
+| Built TIR | sha256 `723a65d8c6b8f383ae6896f7ebadf17721dbb1beecef8e4d2db3e209c2f84124` of `place_exact_in_order`'s TIR content |
 | Spent input | `b4d86e136f58928f8c9247b39a3a351c53505ba03ef6151e92243b18d06f7111#1` (the trader's UTxO at the time) |
 
 ## Order output
@@ -70,8 +72,8 @@ is an aggregator order on the ADA/MIN pool.
 
 ## Negative fixtures
 
-Each fixture mutates one decoded field of a valid order. The checker must
-reject it with the named check:
+Each fixture in `fixtures/negative/` mutates one decoded field of a valid
+order. The checker must reject it with the named check:
 
 | Fixture | Mutation | Rejected by |
 |---|---|---|
@@ -81,11 +83,44 @@ reject it with the named check:
 | `wrong-pool.json` | `lp_asset` name of another pool | pool identity |
 | `wrong-lovelace.json` | 12 ADA locked instead of 14 | order lovelace |
 
+Each fixture in `fixtures/negative-cbor/` patches the generated
+transaction's datum bytes so that one node has a constructor the validator's
+typed decode does not accept. The checker decodes every datum node against
+its exact constructor index and field count:
+
+| Fixture | Patch | Rejected by |
+|---|---|---|
+| `expiry-index.json` | `expiry_setting_opt` constructor 1 → 2 | datum expiry_setting_opt |
+| `lp-asset-index.json` | `lp_asset` constructor 0 → 1 | datum lp_asset |
+| `canceller-method.json` | `OAMSignature` (0) → script authorization (1) | datum canceller |
+| `step-type.json` | `SwapExactIn` (0) → `SwapExactOut` (1), same arity | datum step |
+
 ## Refreshing live inputs
 
-The historical fixtures stay reproducible. The live example names the
-reference trader's preprod address. If its UTxOs change, a fresh
-`trix invoke` spends a different input and produces a different transaction
-hash, while the order output decodes the same. To regenerate
-`generated-order.cbor.hex`, write the `cbor` field of the invoke output to
-that file and rerun the checks.
+The historical fixtures stay reproducible and do not depend on the live
+example. [`place_exact_in_order.json`](place_exact_in_order.json) may name any
+funded key/key base address. `check_interface.py` only requires it to use the
+interface's names, its `trader` address to carry `trader_pkh` and
+`trader_stake_key`, and its `orderscript` to be the profile's
+`order_script_hash` with that stake key.
+
+## Regenerating the generated order
+
+`check_interface.py` fails with "regenerate fixtures/generated-order.cbor.hex"
+when the TIR that `trix build` exports no longer has the digest recorded in
+`generated.tir_sha256`. That happens after any change to the transaction in
+`main.tx3`, and after a tx3c release that encodes the TIR differently. To
+regenerate:
+
+1. Write `generated.args` to a file and run
+   `trix invoke --profile preprod --skip-submit --args-json-path <file>`. If
+   the recorded trader's UTxOs have moved, use a funded wallet and update
+   `generated.args`, `inputs` and the expected receiver together.
+2. Write the `cbor` field of the output to `generated-order.cbor.hex`.
+3. Record the new transaction hash, date, toolchain and the sha256 of
+   `transactions.place_exact_in_order.tir.content` from the built TII under
+   `generated`.
+4. Rerun every check. If the order no longer decodes the same as the
+   reference, the change altered the order and needs review, not just a new
+   fixture. Update this report and the CBOR patch fixtures if the datum bytes
+   moved.

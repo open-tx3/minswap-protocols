@@ -23,7 +23,7 @@ jobs:
       - uses: tx3-lang/actions/setup@v1
       - run: trix check
       - run: trix build --profile preprod
-      - name: Interface, profile, example and README agree
+      - name: Interface, profile, built TIR, fixtures, example and README agree
         run: python3 ../scripts/check_interface.py .
       - name: Owner-built reference order matches the expected effects
         run: >
@@ -37,4 +37,4 @@ jobs:
           --tx fixtures/generated-order.cbor.hex
           --expect fixtures/expected-effects.json
           --same-as fixtures/reference-order.cbor.hex
-          --negative fixtures/negative/*.json
+          --negative fixtures/negative/*.json fixtures/negative-cbor/*.json
