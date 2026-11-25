@@ -1,0 +1,5 @@
+{
+  "description": "Minimum MIN return is lower than the trader asked for.",
+  "mutation": { "path": ["datum", "step", "minimum_receive"], "value": 1 },
+  "rejects": "minimum return"
+}

@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    name: ${{ matrix.protocol }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        protocol: [minswap-v2]
+    defaults:
+      run:
+        working-directory: ${{ matrix.protocol }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: tx3-lang/actions/setup@v1
+      - run: trix check
+      - run: trix build --profile preprod
+      - name: Interface, profile, built TIR, fixtures, example and README agree
+        run: python3 ../scripts/check_interface.py .
+      - name: Owner-built reference order matches the expected effects
+        run: >
+          python3 ../scripts/check_order.py
+          --tx fixtures/reference-order.cbor.hex
+          --expect fixtures/expected-effects.json
+          --negative fixtures/negative/*.json
+      - name: Tx3-built order matches the expected effects and the reference
+        run: >
+          python3 ../scripts/check_order.py
+          --tx fixtures/generated-order.cbor.hex
+          --expect fixtures/expected-effects.json
+          --same-as fixtures/reference-order.cbor.hex
+          --negative fixtures/negative/*.json fixtures/negative-cbor/*.json

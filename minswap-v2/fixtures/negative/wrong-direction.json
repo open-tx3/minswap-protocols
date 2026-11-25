@@ -1,0 +1,5 @@
+{
+  "description": "Order swaps MIN for ADA (B -> A) instead of ADA for MIN.",
+  "mutation": { "path": ["datum", "step", "a_to_b_direction"], "value": false },
+  "rejects": "asset direction"
+}

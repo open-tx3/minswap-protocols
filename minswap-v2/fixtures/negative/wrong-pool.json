@@ -1,0 +1,8 @@
+{
+  "description": "Order targets a pool other than ADA/MIN.",
+  "mutation": {
+    "path": ["datum", "lp_asset", "asset_name"],
+    "value": "db2dc48cdb6288d6f834fc3c23600ac817bfe9e189ae48902e466a31dca57629"
+  },
+  "rejects": "pool identity"
+}

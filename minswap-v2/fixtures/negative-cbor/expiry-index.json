@@ -1,0 +1,6 @@
+{
+  "description": "expiry_setting_opt uses constructor 2, which is neither None nor Some; the validator's typed decode fails.",
+  "applies_to": "generated-order.cbor.hex",
+  "patch": { "find": "1a001e8480d87a80", "replace": "1a001e8480d87b80" },
+  "rejects": "datum expiry_setting_opt"
+}

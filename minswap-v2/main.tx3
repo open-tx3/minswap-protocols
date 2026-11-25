@@ -1,0 +1,188 @@
+// Minswap V2 — place a swap-exact-in order (ADA -> MIN) against one V2 pool.
+//
+// Minswap V2 is a batched DEX. Placing an order only pays funds and an
+// inline OrderDatum to the order validator; no script runs. A Minswap
+// batcher later spends the order together with the pool and pays the
+// output to the success receiver. That settlement is a separate
+// transaction and is not modelled here.
+//
+// Datum layout follows lib/amm_dex_v2/types.ak in minswap/minswap-dex-v2 and
+// OrderV2.Datum.toPlutusData in minswap/sdk (see README.md for revisions).
+
+/// The trader: funds the order, signs, receives change, and is the
+/// order's canceller, success receiver and refund receiver.
+party Trader;
+
+/// The order validator address carrying the trader's stake credential:
+/// the profile's `order_script_hash` as payment part plus the stake key hash
+/// passed as `trader_stake_key`. The Minswap SDK builds the same address.
+/// The caller builds this address and passes it; the transaction does not
+/// derive or check it. A wrong payment part sends the funds to another
+/// address, possibly beyond recovery; a wrong stake part redirects the
+/// staking rewards.
+party OrderScript;
+
+env {
+    /// Script hash of the Minswap V2 order validator: the payment part of
+    /// the `OrderScript` address the order is paid to.
+    order_script_hash: Bytes,
+    /// Policy id of Minswap V2 LP tokens (the pool authentication policy).
+    lp_policy_id: Bytes,
+    /// LP asset name of the ADA/MIN V2 pool; identifies the pool.
+    pool_lp_asset_name: Bytes,
+    /// Maximum batcher fee written into the order, in lovelace.
+    max_batcher_fee: Int,
+    /// Lovelace deposit locked in the order and returned on settlement.
+    order_deposit: Int,
+}
+
+// Plutus address (Address in aiken stdlib)
+
+// Constr(0, [pkh]) — a verification-key payment or stake credential.
+type KeyCredential {
+    hash: Bytes,
+}
+
+// Constr(0, [credential]) — StakeCredential::Inline.
+type InlineStake {
+    credential: KeyCredential,
+}
+
+// Constr(0, [inline]) — Option::Some for the stake part.
+type SomeStake {
+    stake: InlineStake,
+}
+
+// Constr(0, [payment, Some(Inline(stake))]) — base address, key/key.
+type PlutusAddress {
+    payment: KeyCredential,
+    stake: SomeStake,
+}
+
+// Order datum
+
+// OrderAuthorizationMethod; only OAMSignature (index 0) is used.
+type OrderAuthorization {
+    Signature {
+        pub_key_hash: Bytes,
+    },
+}
+
+// ExtraOrderDatum; only EODNoDatum (index 0) is used.
+type ExtraOrderDatum {
+    NoDatum,
+}
+
+// Asset { policy_id, asset_name }.
+type PoolLpAsset {
+    policy_id: Bytes,
+    asset_name: Bytes,
+}
+
+// SwapAmountOption; only SAOSpecificAmount (index 0) is used.
+type SwapAmountOption {
+    SpecificAmount {
+        swap_amount: Int,
+    },
+}
+
+// OrderStep; only SwapExactIn (index 0) is used.
+type OrderStep {
+    SwapExactIn {
+        a_to_b_direction: Bool,
+        swap_amount_option: SwapAmountOption,
+        minimum_receive: Int,
+        killable: Bool,
+    },
+}
+
+// Option<(expired_time, max_cancel_tip)>; only None (index 1) is used.
+type ExpirySetting {
+    SomeExpiry {
+        expired_time: Int,
+        max_cancellation_tip: Int,
+    },
+    NoExpiry,
+}
+
+// OrderDatum, Constr(0, [...9 fields]).
+type OrderDatum {
+    canceller: OrderAuthorization,
+    refund_receiver: PlutusAddress,
+    refund_receiver_datum: ExtraOrderDatum,
+    success_receiver: PlutusAddress,
+    success_receiver_datum: ExtraOrderDatum,
+    lp_asset: PoolLpAsset,
+    step: OrderStep,
+    max_batcher_fee: Int,
+    expiry_setting_opt: ExpirySetting,
+}
+
+// Transactions
+
+/// Place a Minswap V2 order that swaps exactly `swap_amount` lovelace for at
+/// least `minimum_receive` MIN in the ADA/MIN pool. The order locks
+/// `swap_amount + max_batcher_fee + order_deposit` lovelace; a batcher
+/// settles it later and pays MIN plus the unused fee and deposit back.
+tx place_exact_in_order(
+    /// Trader payment key hash (28 bytes): canceller and receiver payment part.
+    trader_pkh: Bytes,
+    /// Trader stake key hash (28 bytes): receiver stake part and order address stake part.
+    trader_stake_key: Bytes,
+    /// ADA offered, in lovelace (1 ADA = 1,000,000 lovelace).
+    swap_amount: Int,
+    /// Least MIN accepted, in base units (MIN has 6 decimals).
+    minimum_receive: Int,
+) {
+    input payment {
+        from: Trader,
+        min_amount: Ada(swap_amount + max_batcher_fee + order_deposit) + fees,
+    }
+
+    output order {
+        to: OrderScript,
+        amount: Ada(swap_amount + max_batcher_fee + order_deposit),
+        datum: OrderDatum {
+            canceller: OrderAuthorization::Signature {
+                pub_key_hash: trader_pkh,
+            },
+            refund_receiver: PlutusAddress {
+                payment: KeyCredential { hash: trader_pkh, },
+                stake: SomeStake {
+                    stake: InlineStake {
+                        credential: KeyCredential { hash: trader_stake_key, },
+                    },
+                },
+            },
+            refund_receiver_datum: ExtraOrderDatum::NoDatum {},
+            success_receiver: PlutusAddress {
+                payment: KeyCredential { hash: trader_pkh, },
+                stake: SomeStake {
+                    stake: InlineStake {
+                        credential: KeyCredential { hash: trader_stake_key, },
+                    },
+                },
+            },
+            success_receiver_datum: ExtraOrderDatum::NoDatum {},
+            lp_asset: PoolLpAsset {
+                policy_id: lp_policy_id,
+                asset_name: pool_lp_asset_name,
+            },
+            step: OrderStep::SwapExactIn {
+                a_to_b_direction: true,
+                swap_amount_option: SwapAmountOption::SpecificAmount {
+                    swap_amount: swap_amount,
+                },
+                minimum_receive: minimum_receive,
+                killable: false,
+            },
+            max_batcher_fee: max_batcher_fee,
+            expiry_setting_opt: ExpirySetting::NoExpiry {},
+        },
+    }
+
+    output change {
+        to: Trader,
+        amount: payment - Ada(swap_amount + max_batcher_fee + order_deposit) - fees,
+    }
+}

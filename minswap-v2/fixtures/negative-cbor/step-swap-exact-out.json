@@ -1,0 +1,6 @@
+{
+  "description": "step is SwapExactOut (constructor 3), a valid OrderStep with the same arity, instead of SwapExactIn (0); the order would decode on-chain but asks for a different swap.",
+  "applies_to": "generated-order.cbor.hex",
+  "patch": { "find": "d87984d87a80", "replace": "d87c84d87a80" },
+  "rejects": "datum step"
+}

@@ -1,0 +1,8 @@
+{
+  "description": "MIN is paid to a receiver other than the trader.",
+  "mutation": {
+    "path": ["datum", "success_receiver", "payment", "hash"],
+    "value": "00000000000000000000000000000000000000000000000000000000"
+  },
+  "rejects": "recipient"
+}
